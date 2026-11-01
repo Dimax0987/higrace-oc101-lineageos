@@ -1,0 +1,18 @@
+# HiGrace OC101 (Allwinner A523): correzioni integrate nella ROM (vedi /system/bin/higrace.sh)
+
+on post-fs
+    exec u:r:phhsu_daemon:s0 root -- /system/bin/higrace.sh post-fs
+    setprop sys.higrace.sfr 0
+
+# Un riavvio di SurfaceFlinger quando parte l'animazione (altrimenti schermo nero all'avvio)
+on property:init.svc.bootanim=running && property:sys.higrace.sfr=0
+    setprop sys.higrace.sfr 1
+    restart surfaceflinger
+
+on property:sys.boot_completed=1
+    start higrace_boot
+
+service higrace_boot /system/bin/higrace.sh boot
+    oneshot
+    disabled
+    seclabel u:r:phhsu_daemon:s0

@@ -1,0 +1,10 @@
+# file grandi o personali: vanno nelle Release o non vanno pubblicati
+rom/
+log/
+*.img.gz
+strumenti/*.exe
+strumenti/*.dll
+strumenti/*.apk
+strumenti/NOTICE.txt
+strumenti/source.properties
+strumenti/*boot*.img

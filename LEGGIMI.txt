@@ -1,0 +1,182 @@
+==========================================================================
+ HiGrace OC101 (Allwinner A523) - Android 16 (LineageOS 23.2) ottimizzata
+==========================================================================
+
+Versione: v1 del 07/10/2026
+ROM:      rom\LineageOS-23.2-HiGrace-OC101.img
+          1.491.709.952 byte
+          SHA-256 828D0D982A27C9567592FE0D2C9E15134B7CCBD83514748FB5C1F0B76810F8E5
+Base:     MisterZtr LineageOS-23.2-20260524-VANILLA-EROFS-GSI (arm64, A16 QPR2)
+          https://sourceforge.net/projects/misterztr-gsi/files/LineageOS/Android%2016/
+
+SOLO per HiGrace OC101 (scheda "863C ... A523_101HD ... OC101_EEA").
+Su altri tablet le correzioni potrebbero non servire o fare danni.
+Tutto a proprio rischio.
+
+
+--------------------------------------------------------------------------
+ 1. COSA C'E' DI DIVERSO DALLA GSI ORIGINALE
+--------------------------------------------------------------------------
+
+Correzioni hardware (senza queste la GSI non funziona su questo tablet):
+ - /vendor/app nascosta all'avvio: contiene app di fabbrica firmate con la
+   chiave del produttore che fanno crashare system_server in loop.
+ - Display sempre alimentato (power/control = on): senza, lo schermo
+   diventa nero dopo circa 3 secondi.
+ - Un riavvio di SurfaceFlinger quando parte l'animazione di avvio:
+   senza, lo schermo resta nero durante l'avvio.
+
+Tablet solo Wi-Fi (telefonia e NFC tolti):
+ - App rimosse: Telefono, Messaggi, Contatti (resta il provider, serve a
+   WhatsApp ecc.), backup contatti, SIM Toolkit, SimAppDialog, Cell
+   Broadcast legacy, CallLogBackup, Info di emergenza, Wallet, Tag NFC,
+   SecureElement, app operatori (CarrierDefaultApp, ONS, Iwlan, QNS,
+   IMS entitlement, WAP push, QcRilAm, MtkInCallService).
+ - Il sistema non dichiara piu' le funzioni di telefonia.
+ - Disattivati (non rimossi, si riattivano da Impostazioni > App):
+   NFC, Cell broadcast, AdServices, OnDevicePersonalization,
+   FederatedCompute, Health Connect, terminale Virtual Machine, EasterEgg.
+
+Prestazioni:
+ - zram = 100% della RAM (circa 4 GB), compressione lz4, swappiness 100.
+ - CPU con governor schedutil.
+ - Al primo avvio completo: compilazione "speed" di tutte le app
+   (una volta sola, qualche minuto in background).
+
+Altro:
+ - adb SEMPRE attivo e SENZA richiesta di autorizzazione (comodo per
+   manutenzione, ma chiunque colleghi un cavo USB ha accesso: non
+   lasciare il tablet incustodito collegato a PC sconosciuti).
+ - Fuso orario predefinito Europe/Rome.
+
+Le correzioni stanno nella ROM (/system/bin/higrace.sh e
+/system/etc/init/higrace.rc): NON servono Magisk ne' moduli.
+Registro dell'ultimo avvio: /data/local/tmp/higrace/ultimo_avvio.log
+
+
+--------------------------------------------------------------------------
+ 2. COSA SERVE
+--------------------------------------------------------------------------
+
+ - PC Windows, cavo USB dati.
+ - Bootloader SBLOCCATO (sul nostro esemplare lo era gia' di fabbrica:
+   con adb, "getprop ro.boot.flash.locked" deve dare 0).
+ - Driver USB per adb/fastboot funzionanti.
+ - Le cartelle "strumenti" e "rom" di questo pacchetto.
+ - Consigliato: backup completo prima di iniziare
+   (vedi la cartella HiGrace_OC101_Backup_Originale).
+
+ATTENZIONE: l'installazione CANCELLA tutti i dati del tablet.
+
+
+--------------------------------------------------------------------------
+ 3. INSTALLAZIONE (dal sistema originale Android 13)
+--------------------------------------------------------------------------
+
+MODO SEMPLICE: doppio clic su  HiGrace_Android16.bat
+   1  Controlla il collegamento del tablet
+   2  INSTALLA Android 16 (CANCELLA TUTTI I DATI)
+   3  ROOT con Magisk (facoltativo)
+   4  Togli il root
+Sul tablet: Opzioni sviluppatore > Debug USB attivo, e autorizzare il PC.
+Lo script verifica la ROM (SHA-256), il modello, lo sblocco e lo slot,
+chiede di scrivere SI, fa i passi a)-d) qui sotto e porta il tablet nel
+recovery: li' fare "Wipe data/factory reset" e "Reboot system now".
+I registri di ogni operazione vanno nella cartella "log".
+
+MODO MANUALE (stessi passi): aprire un prompt dei comandi nella cartella
+"strumenti" e dare un comando alla volta.
+
+ a) Riavvio in fastbootd:
+      adb reboot fastboot
+    Controllo (deve rispondere "is-userspace: yes"):
+      fastboot getvar is-userspace
+
+ b) Fare spazio nella partizione super (la ROM non ci sta insieme a product):
+      fastboot delete-logical-partition product_a
+
+ c) Scrivere la ROM:
+      fastboot flash system_a ..\rom\LineageOS-23.2-HiGrace-OC101.img
+    (il messaggio "Invalid sparse file format at header magic" e' normale)
+
+ d) Disattivare le verifiche AVB:
+      fastboot --disable-verity --disable-verification flash vbmeta_a vbmeta_disabled.img
+      fastboot --disable-verity --disable-verification flash vbmeta_system_a vbmeta_disabled.img
+
+ e) Cancellare i dati dal recovery:
+      fastboot reboot recovery
+    Nel recovery (tasti volume per muoversi, accensione per confermare):
+      "Wipe data/factory reset" -> conferma -> "Reboot system now"
+
+ f) Primo avvio: alcuni minuti. Poi la configurazione iniziale di Android.
+
+AGGIORNARE una ROM gia' installata con una versione nuova di questo
+pacchetto: bastano a) e c), poi "fastboot reboot". I dati restano.
+
+
+--------------------------------------------------------------------------
+ 4. ROOT CON MAGISK (facoltativo)
+--------------------------------------------------------------------------
+
+init_boot_magisk.img e' l'init_boot di fabbrica di QUESTO modello patchato
+con Magisk 30.7.
+
+Modo semplice: HiGrace_Android16.bat, opzione 3 (controlla modello e
+kernel, scrive l'init_boot, installa l'app); opzione 4 per toglierlo.
+
+Modo manuale:
+      adb reboot fastboot
+      fastboot flash init_boot_a init_boot_magisk.img
+      fastboot reboot
+      adb install Magisk-v30.7.apk
+
+Per usare su da adb: app Magisk > Impostazioni > Accesso Superuser =
+"App e ADB", e consentire "Shell" nella scheda Superuser.
+Il comando e' /debug_ramdisk/su (non e' nel PATH della shell adb).
+
+Togliere il root:
+      fastboot flash init_boot_a init_boot_originale.img
+
+Nota: la ROM e' stata provata con l'init_boot Magisk. Le correzioni non
+dipendono da Magisk, quindi deve funzionare anche con quello originale.
+
+
+--------------------------------------------------------------------------
+ 5. SE QUALCOSA VA STORTO
+--------------------------------------------------------------------------
+
+ - Il tablet non si avvia: tenere premuti Volume SU + Accensione ->
+   recovery -> "Reboot to bootloader" -> poi "fastboot reboot fastboot"
+   e ripetere l'installazione, oppure ripristinare l'originale.
+ - Tornare ad Android 13 originale: HiGrace_Ripristino_Android13.bat nella
+   cartella HiGrace_OC101_Backup_Originale (vedi il suo LEGGIMI.txt).
+ - Modalita' FEL (ultima risorsa, solo con Android avviato):
+   "adb reboot efex" (strumento xfel + driver WinUSB con Zadig).
+
+
+--------------------------------------------------------------------------
+ 6. RICOSTRUIRE O MODIFICARE LA ROM (per esperti)
+--------------------------------------------------------------------------
+
+Cartella "sorgenti":
+ - applica_modifiche.ps1  applica tutte le modifiche alla GSI estratta
+ - higrace.sh, higrace.rc file aggiunti alla ROM
+
+Procedura (Windows, erofs-utils 1.8.10 Cygwin di sekaiacg:
+https://github.com/sekaiacg/erofs-utils/releases):
+ 1. extract.erofs -i <GSI originale>.img -x -o rom_work
+    (crea anche config\*_fs_config e *_file_contexts con permessi ed
+    etichette SELinux)
+ 2. applica_modifiche.ps1 (i percorsi nello script sono quelli della
+    cartella di lavoro originale: adattarli)
+ 3. mkfs.erofs -zlz4hc -T 0 --mount-point=/<nome> --fs-config-file=...
+    --file-contexts=... <uscita>.img rom_work\<nome>
+Ogni file NUOVO va aggiunto anche in fs_config e file_contexts.
+Nota: /system/bin/sh (mksh) fa i calcoli a 32 bit: per numeri grandi
+(es. byte di RAM) usare awk.
+
+
+--------------------------------------------------------------------------
+ Ringraziamenti: MisterZtr (GSI), LineageOS, TrebleDroid/phh,
+ topjohnwu (Magisk), sekaiacg / erofs-utils, xboot (xfel).
+--------------------------------------------------------------------------
